@@ -53,10 +53,10 @@ pub const RequestLine = struct {
     timestamp: Timestamp,
     pid: u32,
     level: Level,
-    database: [max_len]u8,
-    library: [128]u8,
+    database: []const u8,
+    library: []const u8,
     ip_addr: [4]u8,
-    body: [max_len]u8,
+    body: []const u8,
     http_code: u16,
     sql_queries: u32,
     sql_time: f32,
@@ -68,10 +68,10 @@ pub const RequestLine = struct {
         timestamp: Timestamp,
         pid: u32,
         level: Level,
-        database: [max_len]u8,
-        library: [128]u8,
+        database: []const u8,
+        library: []const u8,
         ip_addr: [4]u8,
-        body: [max_len]u8,
+        body: []const u8,
         http_code: u16,
         sql_queries: u32,
         sql_time: f32,
@@ -100,9 +100,9 @@ pub const NonRequestLine = struct {
     timestamp: Timestamp,
     pid: u32,
     level: Level,
-    database: [max_len]u8,
-    library: [128]u8,
-    body: [max_len]u8,
+    database: []const u8,
+    library: []const u8,
+    body: []const u8,
     extra_lines: std.ArrayList(u64),
 
     pub fn init(
@@ -110,9 +110,9 @@ pub const NonRequestLine = struct {
         timestamp: Timestamp,
         pid: u32,
         level: Level,
-        database: [max_len]u8,
-        library: [128]u8,
-        body: [max_len]u8,
+        database: []const u8,
+        library: []const u8,
+        body: []const u8,
     ) NonRequestLine {
         return NonRequestLine{
             .id = id,
@@ -129,9 +129,9 @@ pub const NonRequestLine = struct {
 
 pub const ExtraLine = struct {
     id: u64,
-    line: [max_len]u8,
+    line: []const u8,
 
-    pub fn init(id: u64, line: [max_len]u8) ExtraLine {
+    pub fn init(id: u64, line: []const u8) ExtraLine {
         return ExtraLine{ .id = id, .line = line };
     }
 };
@@ -170,8 +170,7 @@ fn _get_body(line: []const u8) [max_len]u8 {
 
             _ = body_getter.next().?;
 
-            const _body = body_getter.next().?;
-            const body = util.add_padding(_body, max_len);
+            const body = body_getter.next().?;
 
             return body;
         }
@@ -192,7 +191,7 @@ pub fn parse(line: []const u8) LogLine {
     var level: Level = undefined;
 
     if (optional_level == null) {
-        const body = util.add_padding(line, max_len);
+        const body = line;
         const new_line = ExtraLine.init(g_id, body);
         return LogLine{ .extra_line = new_line };
     } else {
@@ -212,11 +211,9 @@ pub fn parse(line: []const u8) LogLine {
 
     const pid: u32 = std.fmt.parseInt(u32, _pid[0.._pid.len], 10) catch 0;
 
-    const _database = iterator.next().?;
-    const database = util.add_padding(_database, max_len);
+    const database = iterator.next().?;
 
-    const _library = iterator.next().?;
-    const library = util.add_padding(_library, 128);
+    const library = iterator.next().?;
 
     const _ip = iterator.peek().?;
     var ip: [4]u8 = undefined;
@@ -260,7 +257,7 @@ pub fn parse(line: []const u8) LogLine {
         return LogLine{ .request_line = log };
     } else {
         //no ip here
-        const body = util.add_padding(line[iterator.index.?..line.len], max_len);
+        const body = line[iterator.index.?..line.len];
 
         const log = NonRequestLine.init(g_id, timestamp, pid, level, database, library, body);
         return LogLine{ .non_request_line = log };
